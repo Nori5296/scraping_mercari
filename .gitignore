@@ -1,6 +1,6 @@
 *.pyc
 *~
 __pycache__
-other
-output
+other/
+output/
 settings.py
