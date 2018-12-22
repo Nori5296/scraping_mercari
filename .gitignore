@@ -1,3 +1,6 @@
 *.pyc
 *~
 __pycache__
+other
+output
+settings.py

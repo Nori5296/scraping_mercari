@@ -32,6 +32,9 @@ DOWNLOAD_DELAY = 1
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
 
+# エクスポートの文字コードをutf-8に
+FEED_EXPORT_ENCODING='utf-8'
+
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
 
@@ -64,9 +67,13 @@ DOWNLOAD_DELAY = 1
 
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'myproject.pipelines.MyprojectPipeline': 300,
-#}
+ITEM_PIPELINES = {
+    #0-1000で優先度を設定可能
+    'myproject.pipelines.PostgresPipeline': 300,
+}
+
+# DB information
+POSTGRESQL_URL = 'postgresql://postgres:y4h43np0@localhost:5432/mercari'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://doc.scrapy.org/en/latest/topics/autothrottle.html

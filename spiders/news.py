@@ -19,7 +19,7 @@ class NewsSpider(scrapy.Spider):
         トピックスのページからタイトルと本文を抜き出す
         """
         item = Headline()
-        item['title'] = response.css('.newsTitle ::text').extract_first()
-        item['body'] = response.css('.hbody').xpath('string()').extract_first()
+        item['title'] = response.css('.newsTitle ::text').extract_first()   
+        item['body'] = response.css('.hbody').xpath('string()').extract_first() #XPath allows me to get all text by tag
         yield item
 
