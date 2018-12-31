@@ -20,10 +20,16 @@ class PostgresPipeline(object):
 
     # Spiderで取得した1Itemごとに処理
     def process_item(self, item, spider):
-        sql = "INSERT INTO test_products(product_name, product_price, product_url) VALUES (%s, %s, %s)"
+        sql = "INSERT INTO test_products(product_name, product_price, product_url, product_status\
+                        , cost_allocation, rating_bad, rating_good, rating_normal, ship_from\
+                        , product_description, way_to_deliver, shipping_date, product_likes) \
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         curs = self.conn.cursor()
-        curs.execute(sql, (item['product_name'], item['product_price'], item['product_url']))
+        curs.execute(sql, (item['product_name'], item['product_price'], item['product_url']\
+                            , item['product_status'], item['cost_allocation'], int(item['rating_bad'])\
+                            , int(item['rating_good']), int(item['rating_normal']), item['ship_from']\
+                            , item['product_description'], item['way_to_deliver'], item['shipping_date'], item['product_likes']))
         self.conn.commit()
 
         return item
