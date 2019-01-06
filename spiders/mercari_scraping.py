@@ -17,8 +17,8 @@ class MercariSpider(CrawlSpider):
 
     # リンクをたどるルールリストを定義
     rules = (
-        #各アイテムのリンクをたどりレスポンスを処理する
-        Rule(LinkExtractor(allow=r'https://item.mercari.com/jp/m\d+/'), callback='parse_topics')
+            #各アイテムのリンクをたどりレスポンスを処理する
+            Rule(LinkExtractor(allow=r'https://item.mercari.com/jp/m\d+/'), callback='parse_topics')
         ,
     )
 
@@ -71,13 +71,17 @@ class MercariSpider(CrawlSpider):
         XPATH_LIKE_NUMBER = '//span[@data-num="like"]/text()'
         product_likes = response.xpath(XPATH_LIKE_NUMBER).extract_first() 
 
+        #販売ステータス
+        XPATH_NOW_ON_SALE = '//section[@class="visible-sp"]//div/text()'
+        now_on_sale = response.xpath(XPATH_NOW_ON_SALE).extract_first() 
+
         #ハッシュタグ
         #TODO
 
         #Productクラスにデータを格納
         item['product_name']        = product_dict['name']
         item['product_price']       = product_dict['price']
-        item['product_image']       = product_dict['image']
+        item['product_image_url']   = product_dict['image']
         item['product_url']         = product_dict['url']
 
         item['rating_good']         = rating_good_number
@@ -92,10 +96,7 @@ class MercariSpider(CrawlSpider):
 
         item['product_description'] = product_description
         item['product_likes']       = product_likes
-
-        for printitem in item.items():
-            print(printitem)
-
+        item['now_on_sale']         = now_on_sale
         
         yield item
 

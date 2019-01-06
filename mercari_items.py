@@ -12,7 +12,7 @@ class Product(scrapy.Item):
 
     product_name = scrapy.Field()
     product_price = scrapy.Field()
-    product_image = scrapy.Field()
+    product_image_url = scrapy.Field()
     product_url = scrapy.Field()
     rating_good = scrapy.Field()
     rating_normal = scrapy.Field()
@@ -24,3 +24,4 @@ class Product(scrapy.Item):
     shipping_date = scrapy.Field()
     product_description = scrapy.Field()
     product_likes = scrapy.Field()
+    now_on_sale = scrapy.Field()
