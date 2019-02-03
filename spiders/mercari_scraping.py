@@ -5,27 +5,30 @@ from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 
 from myproject.mercari_items import Product
+from myproject.functions.initialize import url_list_generator
 
-# CrawlSpider makes me easy to get URL infomation
 class MercariSpider(CrawlSpider):
-
+    """メルカリから商品情報を取得するクロールスパイダー
+    """
     #We can execute this program by "scrapy crawl mercari63 -o (filename).jl"
     # 対象商品：『もし高校野球の女子マネージャーがドラッカーの『マネジメント』を読んだら』
-    start_urls = ['https://www.mercari.com/jp/search/?keyword=%E3%82%82%E3%81%97%E9%AB%98%E6%A0%A1%E9%87%8E%E7%90%83%E3%81%AE%E5%A5%B3%E5%AD%90%E3%83%9E%E3%83%8D%E3%83%BC%E3%82%B8%E3%83%A3%E3%83%BC%E3%81%8C%E3%83%89%E3%83%A9%E3%83%83%E3%82%AB%E3%83%BC%E3%81%AE%E3%80%8E%E3%83%9E%E3%83%8D%E3%82%B8%E3%83%A1%E3%83%B3%E3%83%88%E3%80%8F%E3%82%92%E8%AA%AD%E3%82%93%E3%81%A0%E3%82%89']
-    name = 'mercari'                                                #Spyder's name, we call the name in terminal
-    allowed_domains = ['www.mercari.com','item.mercari.com']        #prevent unintentionally access
+    name = 'mercari'
+    allowed_domains = ['www.mercari.com','item.mercari.com']
+    start_urls = url_list_generator()
 
     # リンクをたどるルールリストを定義
     rules = (
             #各アイテムのリンクをたどりレスポンスを処理する
-            Rule(LinkExtractor(allow=r'https://item.mercari.com/jp/m\d+/'), callback='parse_topics')
-        ,
+            Rule(LinkExtractor(allow=r'https://item.mercari.com/jp/m\d+/'
+                                , restrict_xpaths='//div[@class="items-box-content clearfix"]/section[@class="items-box"]')
+                                , callback='parse_topics'),
     )
 
     def parse_topics(self, response):
+        """リンクごとに商品詳細ページにアクセスして情報を取得する
         """
-        リンクごとに商品詳細ページにアクセスして情報を取得する
-        """
+
+        print("URL: " + response.request.url)
         
         #商品情報を保持するitemクラスを定義
         item = Product()
@@ -33,7 +36,7 @@ class MercariSpider(CrawlSpider):
         #商品情報JSONの取得
         product_rawinfo = response.xpath('//script[@type="application/ld+json"]/text()').extract_first()
         product_info_str = json.loads(json.dumps(product_rawinfo)).strip()
-        product_dict = self.transform_jsonstr_to_dict(product_info_str)
+        product_json_dict = self.transform_jsonstr_to_dict(product_info_str)
 
         #商品情報JSON以外の取得
         #商品の評価
@@ -43,64 +46,40 @@ class MercariSpider(CrawlSpider):
         rating_normal_number = user_rating_list[1]  # Normal
         rating_bad_number = user_rating_list[2]     # Bad
 
-        #商品の状態
-        XPATH_PRODUCT_STATUS = '//table/tr[4]/td[1]/text()'
-        product_status = response.xpath(XPATH_PRODUCT_STATUS).extract_first()
-
-        #配送料の負担
-        XPATH_COST = '//table/tr[5]/td[1]/text()'
-        cost_allocation = response.xpath(XPATH_COST).extract_first()
-
-        #配送方法
-        XPATH_DELIVER = '//table/tr[6]/td[1]/text()'
-        way_to_deliver = response.xpath(XPATH_DELIVER).extract_first()
-
-        #発送元
-        XPATH_SHIP_FROM = '//table/tr[7]/td[1]/a/text()'
-        ship_from = response.xpath(XPATH_SHIP_FROM).extract_first()  
-
-        #発送日の目安
-        XPATH_SHIPPING_DATE = '//table/tr[8]/td[1]/text()'
-        shipping_date = response.xpath(XPATH_SHIPPING_DATE).extract_first()  
-
-        #商品の説明
-        XPATH_DESCRIPTION = '//p[@class="item-description-inner"]/text()'
-        product_description = response.xpath(XPATH_DESCRIPTION).extract_first()  
-
-        #いいね
-        XPATH_LIKE_NUMBER = '//span[@data-num="like"]/text()'
-        product_likes = response.xpath(XPATH_LIKE_NUMBER).extract_first() 
-
-        #販売ステータス
-        XPATH_NOW_ON_SALE = '//section[@class="visible-sp"]//div/text()'
-        now_on_sale = response.xpath(XPATH_NOW_ON_SALE).extract_first() 
+        # 商品情報取得クラスをインスタンス化
+        productInfoService = ProductInfoService(response)
+        product_dict = productInfoService.get_product_info_dict()
 
         #ハッシュタグ
-        #TODO
+        # TODO: 修正
+        # hash_list = productInfoService.hash_list_creator()
+
+        # for hashtag in hash_list:
+        #     print("Hash:" + hashtag + "\n")
 
         #Productクラスにデータを格納
-        item['product_name']        = product_dict['name']
-        item['product_price']       = product_dict['price']
-        item['product_image_url']   = product_dict['image']
-        item['product_url']         = product_dict['url']
+        item['product_name']        = product_json_dict['name']
+        item['product_price']       = product_json_dict['price']
+        item['product_image_url']   = product_json_dict['image']
+        item['product_url']         = product_json_dict['url']
 
         item['rating_good']         = rating_good_number
         item['rating_normal']       = rating_normal_number
         item['rating_bad']          = rating_bad_number
 
-        item['product_status']      = product_status
-        item['cost_allocation']     = cost_allocation
-        item['way_to_deliver']      = way_to_deliver
-        item['ship_from']           = ship_from
-        item['shipping_date']       = shipping_date
+        item['product_status']      = product_dict['product_status']
+        item['cost_allocation']     = product_dict['cost_allocation']
+        item['way_to_deliver']      = product_dict['way_to_deliver']
+        item['ship_from']           = product_dict['ship_from']
+        item['shipping_date']       = product_dict['shipping_date']
 
-        item['product_description'] = product_description
-        item['product_likes']       = product_likes
-        item['now_on_sale']         = now_on_sale
+        item['product_description'] = product_dict['product_description']
+        item['product_likes']       = product_dict['product_likes']
+        item['now_on_sale']         = product_dict['now_on_sale']
         
         yield item
 
-    # JSON文字列を処理する関数
+
     def transform_jsonstr_to_dict(self, product_info_str_):
         """
         Mercariの各商品ページに埋め込まれたJSONをもとに商品情報をdict化するメソッド
@@ -130,3 +109,61 @@ class MercariSpider(CrawlSpider):
 
         return maindata_dict
 
+
+class ProductInfoService():
+    """レスポンスをもとに商品データを取得する
+    """
+
+    XPATH_PRODUCT_STATUS = '//table/tr[4]/td[1]/text()'
+    XPATH_COST = '//table/tr[5]/td[1]/text()'
+    XPATH_DELIVER = '//table/tr[6]/td[1]/text()'
+    XPATH_SHIP_FROM = '//table/tr[7]/td[1]/a/text()'
+    XPATH_SHIPPING_DATE = '//table/tr[8]/td[1]/text()'
+    XPATH_DESCRIPTION = '//p[@class="item-description-inner"]/text()'
+    XPATH_LIKE_NUMBER = '//span[@data-num="like"]/text()'
+    XPATH_NOW_ON_SALE = '//section[@class="visible-sp"]//div/text()'
+    
+    __response = None
+    __product_status = None
+    __cost_allocation = None
+    __way_to_deliver = None
+    __ship_from = None
+    __shipping_date = None
+    __product_description = None
+    __product_likes = None
+    __now_on_sale = None
+
+    def __init__(self, response):
+
+        self.__product_status = response.xpath(self.XPATH_PRODUCT_STATUS).extract_first()   #商品の状態
+        self.__cost_allocation = response.xpath(self.XPATH_COST).extract_first()            #配送料の負担
+        self.__way_to_deliver = response.xpath(self.XPATH_DELIVER).extract_first()          #配送方法
+        self.__ship_from = response.xpath(self.XPATH_SHIP_FROM).extract_first()             #発送元
+        self.__shipping_date = response.xpath(self.XPATH_SHIPPING_DATE).extract_first()     #発送日の目安
+        self.__product_description = response.xpath(self.XPATH_DESCRIPTION).extract_first() #商品の説明
+        self.__product_likes = response.xpath(self.XPATH_LIKE_NUMBER).extract_first()       #いいね
+        self.__now_on_sale = response.xpath(self.XPATH_NOW_ON_SALE).extract_first()         #販売ステータス
+
+    def get_product_info_dict(self):
+        """商品情報を辞書型で返却する
+        """
+        ret_dict = {}
+        ret_dict['product_status'] = self.__product_status
+        ret_dict['cost_allocation'] = self.__cost_allocation
+        ret_dict['way_to_deliver'] = self.__way_to_deliver
+        ret_dict['ship_from'] = self.__ship_from
+        ret_dict['shipping_date'] = self.__shipping_date
+        ret_dict['product_description'] = self.__product_description
+        ret_dict['product_likes'] = self.__product_likes
+        ret_dict['now_on_sale'] = self.__now_on_sale
+
+        return ret_dict
+
+    def hash_list_creator(self):
+        """商品説明からハッシュタグを抽出する
+        """
+        #TODO: 修正
+        product_text = self.__product_description
+        hash_list = re.findall(r'#.+\s', product_text)
+
+        return hash_list
